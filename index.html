@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stake Mines & Martingale Autobet Simulator</title>
+  <meta name="description" content="Simulate the Stake Mines board game combined with a Martingale betting strategy. Analyze win streaks, loss streaks, balance changes, and risk calculations in real-time.">
+  <link rel="stylesheet" href="/src/ui/style.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="logo-container">
+      <span class="logo-icon">💣</span>
+      <h1>Stake Mines Martingale Simulator</h1>
+    </div>
+    <div class="badge">Engine v1.0.0</div>
+  </header>
+
+  <!-- App Main Content Area -->
+  <main class="app-main">
+    
+    <!-- Sidebar Controls -->
+    <aside class="sidebar">
+      <div class="tab-container">
+        <div class="tab-btn">Autobet Controller</div>
+      </div>
+
+      <!-- Initial Balance Input -->
+      <div class="input-group">
+        <label class="input-label" for="initial-balance">
+          <span>Initial Balance (R)</span>
+          <span style="color: var(--color-green);">INR</span>
+        </label>
+        <div class="input-wrapper">
+          <input type="number" id="initial-balance" value="1000" min="1" step="10">
+          <span class="input-addon">₹</span>
+        </div>
+      </div>
+
+      <!-- Base Bet Input -->
+      <div class="input-group">
+        <label class="input-label" for="base-bet">
+          <span>Base Bet (B)</span>
+        </label>
+        <div class="input-wrapper">
+          <input type="number" id="base-bet" value="1.00" min="0.01" step="0.5">
+          <span class="input-addon">₹</span>
+        </div>
+        <div class="bet-multipliers">
+          <button type="button" class="quick-btn" id="btn-half-bet">½ Bet</button>
+          <button type="button" class="quick-btn" id="btn-double-bet">2x Bet</button>
+        </div>
+      </div>
+
+      <!-- Grid Dimension Size Input -->
+      <div class="input-group">
+        <label class="input-label" for="grid-size">
+          <span>Grid Size (N x N)</span>
+        </label>
+        <div class="input-wrapper">
+          <input type="number" id="grid-size" value="5" min="2" max="10">
+          <span class="input-addon">Tiles</span>
+        </div>
+      </div>
+
+      <!-- Mines Input -->
+      <div class="input-group">
+        <label class="input-label" for="mines-count">
+          <span>Mines Count (M)</span>
+        </label>
+        <div class="input-wrapper">
+          <input type="number" id="mines-count" value="3" min="1" max="99">
+          <span class="input-addon">Mines</span>
+        </div>
+      </div>
+
+      <!-- Martingale Increase on Loss Input -->
+      <div class="input-group">
+        <label class="input-label" for="loss-increase">
+          <span>Increase Bet on Loss</span>
+        </label>
+        <div class="input-wrapper">
+          <input type="number" id="loss-increase" value="100" min="0" step="5">
+          <span class="input-addon">%</span>
+        </div>
+      </div>
+
+      <!-- Profit Book Amount -->
+      <div class="input-group" id="profit-book-group">
+        <label class="input-label" for="profit-book">
+          <span style="color: #f0c040;">🎯 Profit Book Target</span>
+          <span style="font-size: 10px; color: var(--text-muted); font-weight: 400;">Stop when balance reaches</span>
+        </label>
+        <div class="input-wrapper" style="border-color: rgba(240, 192, 64, 0.35);">
+          <input type="number" id="profit-book" placeholder="Disabled" min="0" step="10" style="color: #f0c040;">
+          <span class="input-addon" style="color: #f0c040;">₹</span>
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; padding: 0 2px;">Leave blank or 0 to disable. Stops simulation the first time balance ≥ this value.</div>
+      </div>
+
+      <!-- Autobet Target Mode Dropdown -->
+      <div class="input-group">
+        <label class="input-label" for="target-mode">
+          <span>Bet Selection Mode</span>
+        </label>
+        <div class="input-wrapper">
+          <select id="target-mode" style="background: none; border: none; color: var(--text-main); font-family: var(--font-sans); font-size: 14px; padding: 12px; outline: none; width: 100%; cursor: pointer;">
+            <option value="specific" style="background-color: var(--bg-secondary);">Specific Tile (Click Grid)</option>
+            <option value="random" style="background-color: var(--bg-secondary);">Random Tile Every Round</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Speed Input -->
+      <div class="speed-slider-group">
+        <label class="input-label">
+          <span>Simulation Speed</span>
+          <span id="speed-label" style="font-family: var(--font-mono); color: var(--color-green);">150ms</span>
+        </label>
+        <input type="range" id="speed-slider" class="speed-slider" min="1" max="5" value="3">
+      </div>
+
+      <!-- Sound FX Toggle -->
+      <div class="sound-toggle-container">
+        <span class="sound-toggle-label">🔊 Play Audio Feedback</span>
+        <label class="switch">
+          <input type="checkbox" id="sound-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <!-- Control Button Actions -->
+      <div class="action-buttons">
+        <button type="button" class="btn-primary" id="btn-start">Start Autobet (Single)</button>
+        <button type="button" class="btn-primary btn-stop" id="btn-pause" style="display: none;">Pause Autobet</button>
+        <button type="button" class="btn-primary" id="btn-start-multi" style="background-color: var(--color-blue); box-shadow: 0 4px 15px rgba(47, 128, 237, 0.2);">Run Multi-Session</button>
+        <button type="button" class="btn-primary btn-stop" id="btn-pause-multi" style="display: none;">Pause Multi-Session</button>
+        <div class="button-row">
+          <button type="button" class="btn-secondary" id="btn-step">Step Bet</button>
+          <button type="button" class="btn-secondary" id="btn-reset">Reset</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Viewport Statistics and Graphics -->
+    <section class="viewport">
+      
+      <!-- Top Row: Game Board & History Chart -->
+      <div class="game-layout">
+        
+        <!-- Board Container -->
+        <article class="board-container">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+            1-Tile Multiplier
+          </div>
+          <div class="multiplier-badge" id="multiplier-badge">1.13x</div>
+          <div class="board-grid" id="board-grid">
+            <!-- Dynamically populated via JS -->
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); text-align: center;">
+            Click on a tile above to lock it as your bet target.
+          </div>
+        </article>
+
+        <!-- Charts Wrapper -->
+        <div class="charts-wrapper" style="flex: 1; display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+          
+          <!-- Balance History Chart -->
+          <article class="chart-container" style="flex: 1; min-height: 240px;">
+            <div class="chart-header">
+              <span class="chart-title">Balance History (₹) - Active Session</span>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="balance-chart"></canvas>
+            </div>
+          </article>
+          
+          <!-- Histograms Row -->
+          <div class="histograms-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <article class="chart-container" style="min-height: 180px;">
+              <div class="chart-header">
+                <span class="chart-title">Max Amount Reached Frequency</span>
+              </div>
+              <div class="canvas-wrapper">
+                <canvas id="peak-balance-histogram"></canvas>
+              </div>
+            </article>
+            
+            <article class="chart-container" style="min-height: 180px;">
+              <div class="chart-header">
+                <span class="chart-title">Rounds Survived Frequency</span>
+              </div>
+              <div class="canvas-wrapper">
+                <canvas id="survival-histogram"></canvas>
+              </div>
+            </article>
+          </div>
+          
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <section class="stats-container">
+        
+        <div class="stat-card">
+          <span class="stat-title">Current Balance</span>
+          <span class="stat-value mono" id="stat-balance">₹0.00</span>
+        </div>
+        
+        <div class="stat-card">
+          <span class="stat-title">Net Profit/Loss</span>
+          <span class="stat-value mono" id="stat-profit">₹0.00</span>
+        </div>
+        
+        <div class="stat-card">
+          <span class="stat-title">Total Bets Placed</span>
+          <span class="stat-value" id="stat-bets">0</span>
+        </div>
+        
+        <div class="stat-card">
+          <span class="stat-title">Win Rate</span>
+          <span class="stat-value win" id="stat-win-rate">0.0%</span>
+        </div>
+        
+        <div class="stat-card">
+          <span class="stat-title">Max Bet Reached</span>
+          <span class="stat-value mono" id="stat-max-bet">₹0.00</span>
+        </div>
+        
+        <div class="stat-card">
+          <span class="stat-title">Loss Streak (Current/Max)</span>
+          <span class="stat-value loss mono" id="stat-loss-streak">0 / 0</span>
+        </div>
+      </section>
+
+      <!-- Bet Logs -->
+      <article class="logs-container">
+        <div class="logs-header">
+          <span class="logs-title">Recent Bet Logs (Latest 15)</span>
+        </div>
+        <div class="logs-table-wrapper">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th>Bet #</th>
+                <th>Bet Size</th>
+                <th>Target Tile</th>
+                <th>Outcome</th>
+                <th>Multiplier</th>
+                <th>Profit / Loss</th>
+              </tr>
+            </thead>
+            <tbody id="logs-body">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+    </section>
+  </main>
+
+  <!-- Bankruptcy Alert Overlay Modal -->
+  <div class="alert-overlay" id="modal-overlay" style="display: none;">
+    <div class="alert-modal">
+      <span class="alert-icon">💥</span>
+      <h2 class="alert-title">Bankruptcy Reached!</h2>
+      <p class="alert-message">
+        Your current balance is insufficient to place the next scaled Martingale bet.
+      </p>
+      
+      <div class="alert-stats">
+        <div class="alert-stat-row">
+          <span>Final Balance:</span>
+          <span id="modal-final-balance" style="font-family: var(--font-mono);">₹0.00</span>
+        </div>
+        <div class="alert-stat-row">
+          <span>Total Bets Placed:</span>
+          <span id="modal-total-bets" style="font-family: var(--font-mono);">0</span>
+        </div>
+        <div class="alert-stat-row">
+          <span>Peak Balance Reached:</span>
+          <span id="modal-peak-balance" style="font-family: var(--font-mono); color: var(--color-green);">₹0.00</span>
+        </div>
+        <div class="alert-stat-row">
+          <span>Max Bet Reached:</span>
+          <span id="modal-max-bet" style="font-family: var(--font-mono); color: var(--color-red);">₹0.00</span>
+        </div>
+      </div>
+      
+      <button type="button" class="btn-primary" id="modal-close" style="width: 100%; margin-top: 10px;">
+        Acknowledge & Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- Multi-Session Prompt Modal -->
+  <div class="alert-overlay" id="multi-session-prompt-modal" style="display: none;">
+    <div class="alert-modal" style="border-color: var(--color-blue);">
+      <span class="alert-icon">📊</span>
+      <h2 class="alert-title" style="color: var(--color-blue);">Multi-Session Simulation</h2>
+      <p class="alert-message">
+        Configure how many independent runs to simulate. Each run starts with the initial balance and is played until bankruptcy.
+      </p>
+      
+      <div class="input-group" style="width: 100%; margin-top: 10px;">
+        <label class="input-label" for="multi-session-count" style="text-align: left;">
+          <span>Number of Sessions</span>
+        </label>
+        <div class="input-wrapper">
+          <input type="number" id="multi-session-count" value="100" min="1" max="1000000" step="100">
+          <span class="input-addon">Runs</span>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 10px; width: 100%; margin-top: 15px;">
+        <button type="button" class="btn-secondary" id="btn-multi-prompt-cancel" style="flex: 1; padding: 14px;">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-multi-prompt-start" style="flex: 1; padding: 14px; background-color: var(--color-blue); box-shadow: 0 4px 15px rgba(47, 128, 237, 0.2);">Start Runs</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multi-Session Summary Modal -->
+  <div class="alert-overlay" id="multi-session-summary-modal" style="display: none;">
+    <div class="alert-modal" style="border-color: var(--color-green);">
+      <span class="alert-icon">📈</span>
+      <h2 class="alert-title" style="color: var(--color-green);">Simulation Completed</h2>
+      <p class="alert-message">
+        All simulated sessions have run to bankruptcy. Here is the aggregate performance summary.
+      </p>
+      
+      <div class="alert-stats">
+        <div class="alert-stat-row">
+          <span>Total Sessions:</span>
+          <span id="summary-total-sessions" style="font-family: var(--font-mono);">0</span>
+        </div>
+        <div class="alert-stat-row">
+          <span>Avg. Rounds Survived:</span>
+          <span id="summary-avg-rounds" style="font-family: var(--font-mono); color: var(--color-yellow);">0</span>
+        </div>
+        <div class="alert-stat-row">
+          <span>Max. Rounds Survived:</span>
+          <span id="summary-max-rounds" style="font-family: var(--font-mono); color: var(--color-green);">0</span>
+        </div>
+        <div class="alert-stat-row">
+          <span>Avg. Peak Balance:</span>
+          <span id="summary-avg-peak" style="font-family: var(--font-mono);">₹0.00</span>
+        </div>
+        <div class="alert-stat-row">
+          <span>Highest Peak Balance:</span>
+          <span id="summary-highest-peak" style="font-family: var(--font-mono); color: var(--color-green);">₹0.00</span>
+        </div>
+      </div>
+      
+      <button type="button" class="btn-primary" id="btn-summary-close" style="width: 100%; margin-top: 10px;">
+        Acknowledge
+      </button>
+    </div>
+  </div>
+
+  <!-- Chart Detail Overlay Modal -->
+  <div class="chart-detail-overlay" id="chart-detail-modal" style="display: none;">
+    <div class="chart-detail-modal">
+      <div class="detail-modal-header">
+        <div>
+          <h3 id="detail-modal-title" style="margin: 0;">Detailed Analysis</h3>
+          <div class="detail-tabs" id="detail-modal-tabs">
+            <!-- Dynamically populated tabs in JS -->
+          </div>
+        </div>
+        <button type="button" class="btn-detail-close" id="btn-detail-close">&times;</button>
+      </div>
+      <div class="detail-modal-grid">
+        <!-- Main Content Area -->
+        <div class="detail-charts-container">
+          <!-- Tab: Probability/CDF (Canvas) -->
+          <div id="tab-content-cdf" class="tab-content">
+            <div class="canvas-card" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--border-radius);">
+              <h4 id="cdf-chart-title" style="margin: 0 0 10px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Survival Probability Curve (CDF)</h4>
+              <canvas id="detail-cdf-canvas" style="height: 300px; width: 100%;"></canvas>
+            </div>
+          </div>
+          
+          <!-- Tab: Histograms (Linear / Log) -->
+          <div id="tab-content-histograms" class="tab-content" style="display: none; width: 100%;">
+            <div style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
+              <div class="canvas-card" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--border-radius);">
+                <h4 style="margin: 0 0 12px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.08em;">Linear Scale Histogram — Frequency Distribution</h4>
+                <canvas id="detail-linear-canvas" style="height: 320px; width: 100%;"></canvas>
+              </div>
+              <div class="canvas-card" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--border-radius);">
+                <h4 style="margin: 0 0 12px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.08em;">Log Scale Histogram — Geometric Distribution View</h4>
+                <canvas id="detail-log-canvas" style="height: 320px; width: 100%;"></canvas>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tab: Session Logs (Table) -->
+          <div id="tab-content-table" class="tab-content" style="display: none;">
+            <div class="table-container" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 16px; max-height: 400px; overflow-y: auto;">
+              <table class="session-detail-table" id="session-detail-table">
+                <thead>
+                  <tr>
+                    <th style="cursor: pointer;" id="th-sess-id">Session # ⇅</th>
+                    <th style="cursor: pointer;" id="th-sess-rounds">Rounds Survived ⇅</th>
+                    <th style="cursor: pointer;" id="th-sess-peak">Peak Balance ⇅</th>
+                  </tr>
+                </thead>
+                <tbody id="session-detail-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab: Stop Optimizer (Canvas) -->
+          <div id="tab-content-optimizer" class="tab-content" style="display: none;">
+            <div class="canvas-card" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--border-radius);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 id="optimizer-chart-title" style="margin: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Total Earned vs. Stop Limit</h4>
+                <div style="display: flex; gap: 6px;">
+                  <button type="button" class="detail-tab active" id="btn-opt-rounds" style="padding: 4px 8px; font-size: 10px;">Stop by Rounds</button>
+                  <button type="button" class="detail-tab" id="btn-opt-exit" style="padding: 4px 8px; font-size: 10px;">Stop by Exit Value</button>
+                </div>
+              </div>
+              <canvas id="detail-optimizer-canvas" style="height: 300px; width: 100%;"></canvas>
+            </div>
+          </div>
+
+          <!-- Tab: Single Run Line Chart -->
+          <div id="tab-content-line" class="tab-content" style="display: none;">
+            <div class="canvas-card" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--border-radius); position: relative;">
+              <h4 style="margin: 0 0 10px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Interactive Path (Hover to inspect)</h4>
+              <div style="position: relative;">
+                <canvas id="detail-line-canvas" style="height: 300px; width: 100%;"></canvas>
+                <div id="detail-line-tooltip" class="chart-tooltip" style="display: none; position: absolute; background-color: rgba(15, 33, 46, 0.95); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 4px; pointer-events: none; font-size: 11px; z-index: 10; color: var(--text-primary);"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Single Run Bet Table -->
+          <div id="tab-content-bet-table" class="tab-content" style="display: none;">
+            <div class="table-container" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 16px; max-height: 400px; overflow-y: auto;">
+              <table class="session-detail-table">
+                <thead>
+                  <tr>
+                    <th>Bet #</th>
+                    <th>Bet Size</th>
+                    <th>Outcome</th>
+                    <th>Profit/Loss</th>
+                    <th>New Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="bet-detail-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Side Stats Panel -->
+        <div class="detail-stats-panel" id="detail-stats-panel">
+          <!-- Populated Dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Profit Book Success Modal -->
+  <div id="profit-book-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background: linear-gradient(135deg, #0f2a1a 0%, #0f212e 100%); border: 1px solid rgba(240,192,64,0.45); border-radius: 16px; padding: 36px 40px; max-width: 440px; width: 92%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(240,192,64,0.08); animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+      <div style="font-size: 52px; margin-bottom: 12px;">🎯</div>
+      <h2 style="font-family: var(--font-display); font-size: 24px; font-weight: 900; color: #f0c040; margin: 0 0 6px 0; letter-spacing: -0.02em;">Profit Booked!</h2>
+      <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 28px 0;">Your balance hit the target and the simulation was stopped automatically.</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px;">
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
+          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;">Final Balance</div>
+          <div id="pb-modal-balance" style="font-family:var(--font-mono); font-size:18px; font-weight:800; color:#f0c040;">₹0.00</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
+          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;">Net Profit</div>
+          <div id="pb-modal-profit" style="font-family:var(--font-mono); font-size:18px; font-weight:800; color:var(--color-green);">+₹0.00</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
+          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;">Rounds Played</div>
+          <div id="pb-modal-rounds" style="font-family:var(--font-mono); font-size:18px; font-weight:800; color:var(--text-primary);">0</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px;">
+          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;">Target Was</div>
+          <div id="pb-modal-target" style="font-family:var(--font-mono); font-size:18px; font-weight:800; color:#f0c040;">₹0.00</div>
+        </div>
+      </div>
+      <button id="btn-pb-modal-close" type="button" style="background: linear-gradient(135deg, #f0c040, #c8941c); color: #0a1a0a; font-family: var(--font-display); font-size: 14px; font-weight: 800; border: none; border-radius: 10px; padding: 14px 40px; cursor: pointer; width: 100%; letter-spacing: 0.03em; transition: opacity 0.15s;">Got it — Keep Profit!</button>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
