@@ -35,6 +35,9 @@ export class MartingaleEngine {
     gridSize = 5,
     minesCount = 3,
     increaseOnLossPercent = 100,
+    resetOnLoss = false,
+    increaseOnWinPercent = 0,
+    resetOnWin = true,
     rtp = 0.99,
     storeHistory = true
   }) {
@@ -46,6 +49,9 @@ export class MartingaleEngine {
     this.totalTiles = this.gridSize * this.gridSize;
     this.minesCount = Math.max(1, Math.min(this.totalTiles - 1, Number(minesCount)));
     this.increaseOnLossPercent = Math.max(0, Number(increaseOnLossPercent));
+    this.resetOnLoss = Boolean(resetOnLoss);
+    this.increaseOnWinPercent = Math.max(0, Number(increaseOnWinPercent));
+    this.resetOnWin = Boolean(resetOnWin);
     this.rtp = Math.max(0, Math.min(1, Number(rtp)));
     this.storeHistory = storeHistory;
 
@@ -121,8 +127,13 @@ export class MartingaleEngine {
         this.stats.maxLossStreak = this.stats.currentLossStreak;
       }
 
-      // Martingale bet scaling
-      const nextBet = this.currentBet * (1 + this.increaseOnLossPercent / 100);
+      // Martingale bet scaling on loss
+      let nextBet = this.currentBet;
+      if (this.resetOnLoss) {
+        nextBet = this.baseBet;
+      } else {
+        nextBet = this.currentBet * (1 + this.increaseOnLossPercent / 100);
+      }
       this.stats.maxBet = Math.max(this.stats.maxBet, nextBet);
       
       // Update bet for next round
@@ -140,8 +151,17 @@ export class MartingaleEngine {
         this.stats.maxWinStreak = this.stats.currentWinStreak;
       }
 
-      // Reset bet to base bet
-      this.currentBet = this.baseBet;
+      // Bet scaling on win
+      let nextBet = this.currentBet;
+      if (this.resetOnWin) {
+        nextBet = this.baseBet;
+      } else {
+        nextBet = this.currentBet * (1 + this.increaseOnWinPercent / 100);
+      }
+      this.stats.maxBet = Math.max(this.stats.maxBet, nextBet);
+      
+      // Update bet for next round
+      this.currentBet = nextBet;
     }
 
     this.stats.totalBets++;

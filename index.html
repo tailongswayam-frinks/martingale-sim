@@ -76,14 +76,39 @@
         </div>
       </div>
 
-      <!-- Martingale Increase on Loss Input -->
+      <!-- On Win Behavior -->
       <div class="input-group">
-        <label class="input-label" for="loss-increase">
-          <span>Increase Bet on Loss</span>
+        <label class="input-label">
+          <span>On Win Behavior</span>
         </label>
-        <div class="input-wrapper">
-          <input type="number" id="loss-increase" value="100" min="0" step="5">
-          <span class="input-addon">%</span>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-primary); cursor: pointer;">
+            <input type="checkbox" id="win-reset" checked>
+            Reset to Base Bet
+          </label>
+          <div class="input-wrapper" style="opacity: 0.5; transition: opacity 0.2s;" id="win-increase-wrapper">
+            <span class="input-addon" style="border-right: 1px solid var(--border-color); border-left: none; width: auto; padding: 0 10px; font-size: 11px;">Increase</span>
+            <input type="number" id="win-increase" value="100" min="0" step="5" disabled>
+            <span class="input-addon">%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- On Loss Behavior -->
+      <div class="input-group">
+        <label class="input-label">
+          <span>On Loss Behavior</span>
+        </label>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-primary); cursor: pointer;">
+            <input type="checkbox" id="loss-reset">
+            Reset to Base Bet
+          </label>
+          <div class="input-wrapper" id="loss-increase-wrapper">
+            <span class="input-addon" style="border-right: 1px solid var(--border-color); border-left: none; width: auto; padding: 0 10px; font-size: 11px;">Increase</span>
+            <input type="number" id="loss-increase" value="100" min="0" step="5">
+            <span class="input-addon">%</span>
+          </div>
         </div>
       </div>
 
@@ -353,8 +378,45 @@
           <span id="summary-highest-peak" style="font-family: var(--font-mono); color: var(--color-green);">₹0.00</span>
         </div>
       </div>
+
+      <!-- Hypothetical Profit Cap Analyzer for Summary Modal -->
+      <div class="manual-cap-analyzer" style="background-color: rgba(15, 33, 46, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 12px; margin-top: 15px; text-align: left;">
+        <h4 style="margin: 0 0 10px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Hypothetical Profit Cap Analyzer</h4>
+        <div style="display: flex; gap: 8px; align-items: flex-end;">
+          <div class="input-group" style="margin: 0; flex: 1;">
+            <label class="input-label" for="manual-profit-cap-summary">
+              <span style="font-size: 10px;">Target Peak Balance (Cap)</span>
+            </label>
+            <div class="input-wrapper" style="padding: 6px;">
+              <input type="number" id="manual-profit-cap-summary" placeholder="e.g. 1500" min="0" step="10" style="font-size: 13px;">
+              <span class="input-addon" style="font-size: 13px;">₹</span>
+            </div>
+          </div>
+          <button type="button" class="btn-primary" id="btn-analyze-cap-summary" style="padding: 8px 12px; font-size: 12px;">Analyze</button>
+        </div>
+        <div id="manual-cap-results-summary" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
+          <div class="detail-stats-grid" style="grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="detail-stat-card" style="padding: 8px;">
+              <span style="font-size: 9px;">Successful Sessions</span>
+              <span id="cap-success-count-summary" style="font-size: 12px;">0</span>
+            </div>
+            <div class="detail-stat-card" style="padding: 8px;">
+              <span style="font-size: 9px;">Total Deposit</span>
+              <span id="cap-total-deposit-summary" style="font-size: 12px;">₹0.00</span>
+            </div>
+            <div class="detail-stat-card" style="padding: 8px;">
+              <span style="font-size: 9px;">Total Earned</span>
+              <span id="cap-total-earned-summary" style="font-size: 12px; color: var(--color-green);">₹0.00</span>
+            </div>
+            <div class="detail-stat-card" style="padding: 8px;">
+              <span style="font-size: 9px;">Net Profit</span>
+              <span id="cap-net-profit-summary" style="font-size: 12px; font-weight: 700;">₹0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
       
-      <button type="button" class="btn-primary" id="btn-summary-close" style="width: 100%; margin-top: 10px;">
+      <button type="button" class="btn-primary" id="btn-summary-close" style="width: 100%; margin-top: 15px;">
         Acknowledge
       </button>
     </div>
@@ -399,6 +461,43 @@
           
           <!-- Tab: Session Logs (Table) -->
           <div id="tab-content-table" class="tab-content" style="display: none;">
+            <!-- Hypothetical Profit Cap Analyzer -->
+            <div class="manual-cap-analyzer" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px;">
+              <h4 style="margin: 0 0 10px 0; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Hypothetical Profit Cap Analyzer</h4>
+              <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div class="input-group" style="margin: 0; flex: 1;">
+                  <label class="input-label" for="manual-profit-cap">
+                    <span>Target Peak Balance (Cap)</span>
+                  </label>
+                  <div class="input-wrapper">
+                    <input type="number" id="manual-profit-cap" placeholder="e.g. 1500" min="0" step="10">
+                    <span class="input-addon">₹</span>
+                  </div>
+                </div>
+                <button type="button" class="btn-primary" id="btn-analyze-cap" style="padding: 12px 16px;">Analyze</button>
+              </div>
+              <div id="manual-cap-results" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <div class="detail-stats-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div class="detail-stat-card">
+                    <span>Successful Sessions</span>
+                    <span id="cap-success-count">0</span>
+                  </div>
+                  <div class="detail-stat-card">
+                    <span>Total Deposit (All Runs)</span>
+                    <span id="cap-total-deposit">₹0.00</span>
+                  </div>
+                  <div class="detail-stat-card">
+                    <span>Total Earned (Wins × Cap)</span>
+                    <span id="cap-total-earned" style="color: var(--color-green);">₹0.00</span>
+                  </div>
+                  <div class="detail-stat-card">
+                    <span>Hypothetical Net Profit</span>
+                    <span id="cap-net-profit" style="font-weight: 700;">₹0.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="table-container" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 16px; max-height: 400px; overflow-y: auto;">
               <table class="session-detail-table" id="session-detail-table">
                 <thead>

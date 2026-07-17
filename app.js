@@ -89,6 +89,11 @@ const elBaseBet = document.getElementById('base-bet');
 const elGridSize = document.getElementById('grid-size');
 const elMinesCount = document.getElementById('mines-count');
 const elLossIncrease = document.getElementById('loss-increase');
+const elLossReset = document.getElementById('loss-reset');
+const elLossIncreaseWrapper = document.getElementById('loss-increase-wrapper');
+const elWinIncrease = document.getElementById('win-increase');
+const elWinReset = document.getElementById('win-reset');
+const elWinIncreaseWrapper = document.getElementById('win-increase-wrapper');
 const elSpeedSlider = document.getElementById('speed-slider');
 const elSpeedLabel = document.getElementById('speed-label');
 const elTargetMode = document.getElementById('target-mode');
@@ -156,6 +161,24 @@ const elDetailLineCanvas = document.getElementById('detail-line-canvas');
 const elDetailLineCtx = elDetailLineCanvas.getContext('2d');
 const elDetailCDFCanvas = document.getElementById('detail-cdf-canvas');
 const elDetailCDFCtx = elDetailCDFCanvas.getContext('2d');
+
+// Manual Cap Analyzer
+const elManualProfitCap = document.getElementById('manual-profit-cap');
+const elBtnAnalyzeCap = document.getElementById('btn-analyze-cap');
+const elManualCapResults = document.getElementById('manual-cap-results');
+const elCapSuccessCount = document.getElementById('cap-success-count');
+const elCapTotalDeposit = document.getElementById('cap-total-deposit');
+const elCapTotalEarned = document.getElementById('cap-total-earned');
+const elCapNetProfit = document.getElementById('cap-net-profit');
+
+// Summary Modal Cap Analyzer
+const elManualProfitCapSummary = document.getElementById('manual-profit-cap-summary');
+const elBtnAnalyzeCapSummary = document.getElementById('btn-analyze-cap-summary');
+const elManualCapResultsSummary = document.getElementById('manual-cap-results-summary');
+const elCapSuccessCountSummary = document.getElementById('cap-success-count-summary');
+const elCapTotalDepositSummary = document.getElementById('cap-total-deposit-summary');
+const elCapTotalEarnedSummary = document.getElementById('cap-total-earned-summary');
+const elCapNetProfitSummary = document.getElementById('cap-net-profit-summary');
 
 // Profit Book
 const elProfitBook = document.getElementById('profit-book');
@@ -567,7 +590,10 @@ function lockSettings(lock) {
   elBaseBet.disabled = lock;
   elGridSize.disabled = lock;
   elMinesCount.disabled = lock;
-  elLossIncrease.disabled = lock;
+  elLossIncrease.disabled = lock || elLossReset.checked;
+  elLossReset.disabled = lock;
+  elWinIncrease.disabled = lock || elWinReset.checked;
+  elWinReset.disabled = lock;
   elTargetMode.disabled = lock;
   elProfitBook.disabled = lock;
   
@@ -584,14 +610,20 @@ function initSimulation() {
   const B = parseFloat(elBaseBet.value) || 1;
   const N = parseInt(elGridSize.value) || 5;
   const M = parseInt(elMinesCount.value) || 3;
-  const P = parseFloat(elLossIncrease.value) || 100;
+  const PL = parseFloat(elLossIncrease.value) || 0;
+  const RL = elLossReset.checked;
+  const PW = parseFloat(elWinIncrease.value) || 0;
+  const RW = elWinReset.checked;
 
   engine = new MartingaleEngine({
     initialBalance: R,
     baseBet: B,
     gridSize: N,
     minesCount: M,
-    increaseOnLossPercent: P
+    increaseOnLossPercent: PL,
+    resetOnLoss: RL,
+    increaseOnWinPercent: PW,
+    resetOnWin: RW
   });
 
   elLogsBody.innerHTML = '';
@@ -1084,7 +1116,10 @@ function runMultiSessionLoop() {
   const B = parseFloat(elBaseBet.value) || 1;
   const N = parseInt(elGridSize.value) || 5;
   const M = parseInt(elMinesCount.value) || 3;
-  const P = parseFloat(elLossIncrease.value) || 100;
+  const PL = parseFloat(elLossIncrease.value) || 0;
+  const RL = elLossReset.checked;
+  const PW = parseFloat(elWinIncrease.value) || 0;
+  const RW = elWinReset.checked;
 
   if (speedMode === 5) {
     // Instant mode - process bets in batches per frame to prevent blocking the main thread
@@ -1098,7 +1133,10 @@ function runMultiSessionLoop() {
           baseBet: B,
           gridSize: N,
           minesCount: M,
-          increaseOnLossPercent: P,
+          increaseOnLossPercent: PL,
+          resetOnLoss: RL,
+          increaseOnWinPercent: PW,
+          resetOnWin: RW,
           storeHistory: true // Store history so we can draw the live line chart for the active run!
         });
         currentInstantEngine.checkpointBalances = {};
@@ -1180,7 +1218,10 @@ function runMultiSessionLoop() {
         baseBet: B,
         gridSize: N,
         minesCount: M,
-        increaseOnLossPercent: P,
+        increaseOnLossPercent: PL,
+        resetOnLoss: RL,
+        increaseOnWinPercent: PW,
+        resetOnWin: RW,
         storeHistory: true
       });
       engine = currentMultiSessionEngine;
@@ -1345,6 +1386,18 @@ elSpeedSlider.addEventListener('input', (e) => {
     stopAutobet();
     startAutobet();
   }
+});
+
+elWinReset.addEventListener('change', (e) => {
+  playSound('click');
+  elWinIncrease.disabled = e.target.checked;
+  elWinIncreaseWrapper.style.opacity = e.target.checked ? '0.5' : '1';
+});
+
+elLossReset.addEventListener('change', (e) => {
+  playSound('click');
+  elLossIncrease.disabled = e.target.checked;
+  elLossIncreaseWrapper.style.opacity = e.target.checked ? '0.5' : '1';
 });
 
 elSoundToggle.addEventListener('change', (e) => {
@@ -2388,6 +2441,74 @@ elChartDetailModal.addEventListener('click', (e) => {
     elChartDetailModal.style.display = 'none';
   }
 });
+
+// Manual Cap Analyzer Event Listener
+if (elBtnAnalyzeCap) {
+  elBtnAnalyzeCap.addEventListener('click', () => {
+    playSound('click');
+    if (multiSessionData.length === 0) return;
+    
+    const capValue = parseFloat(elManualProfitCap.value);
+    if (isNaN(capValue) || capValue <= 0) return;
+
+    const initialBal = parseFloat(elInitialBalance.value) || 1000;
+    let successCount = 0;
+    
+    for (const sess of multiSessionData) {
+      if (sess.peakBalance >= capValue) {
+        successCount++;
+      }
+    }
+    
+    const totalSessions = multiSessionData.length;
+    const totalEarned = successCount * capValue;
+    const totalDeposit = totalSessions * initialBal;
+    const netProfit = totalEarned - totalDeposit;
+    
+    elCapSuccessCount.textContent = `${successCount} / ${totalSessions}`;
+    elCapTotalEarned.textContent = `₹${totalEarned.toFixed(2)}`;
+    elCapTotalDeposit.textContent = `₹${totalDeposit.toFixed(2)}`;
+    
+    elCapNetProfit.textContent = `${netProfit >= 0 ? '+' : ''}₹${netProfit.toFixed(2)}`;
+    elCapNetProfit.style.color = netProfit >= 0 ? 'var(--color-green)' : 'var(--color-red)';
+    
+    elManualCapResults.style.display = 'block';
+  });
+}
+
+// Summary Modal Cap Analyzer Event Listener
+if (elBtnAnalyzeCapSummary) {
+  elBtnAnalyzeCapSummary.addEventListener('click', () => {
+    playSound('click');
+    if (multiSessionData.length === 0) return;
+    
+    const capValue = parseFloat(elManualProfitCapSummary.value);
+    if (isNaN(capValue) || capValue <= 0) return;
+
+    const initialBal = parseFloat(elInitialBalance.value) || 1000;
+    let successCount = 0;
+    
+    for (const sess of multiSessionData) {
+      if (sess.peakBalance >= capValue) {
+        successCount++;
+      }
+    }
+    
+    const totalSessions = multiSessionData.length;
+    const totalEarned = successCount * capValue;
+    const totalDeposit = totalSessions * initialBal;
+    const netProfit = totalEarned - totalDeposit;
+    
+    elCapSuccessCountSummary.textContent = `${successCount} / ${totalSessions}`;
+    elCapTotalEarnedSummary.textContent = `₹${totalEarned.toFixed(2)}`;
+    elCapTotalDepositSummary.textContent = `₹${totalDeposit.toFixed(2)}`;
+    
+    elCapNetProfitSummary.textContent = `${netProfit >= 0 ? '+' : ''}₹${netProfit.toFixed(2)}`;
+    elCapNetProfitSummary.style.color = netProfit >= 0 ? 'var(--color-green)' : 'var(--color-red)';
+    
+    elManualCapResultsSummary.style.display = 'block';
+  });
+}
 
 // Register functions on window for module scoping compatibility
 window.switchDetailTab = switchDetailTab;
